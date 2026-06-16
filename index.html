@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Big Jack — режиссура исключительных событий</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0b0c10;--cream:#f0eee9;--gold:#987730;--teal:#2e676b;--r:10px;--fd:'Playfair Display',Georgia,serif;--fb:'Manrope',system-ui,sans-serif;--pad:clamp(20px,4.58vw,88px)}
+html{background:var(--bg);color:var(--cream);overflow-x:hidden}
+body{font-family:var(--fb);font-size:16px;line-height:1.5;background:var(--bg);overflow-x:hidden;cursor:none;overflow-y:hidden}
+body.unlocked{overflow-y:auto}
+img,video{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}ul{list-style:none}
+button{cursor:none;border:none;background:none;font:inherit;color:inherit}
+#cur{position:fixed;width:10px;height:10px;background:var(--gold);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%)}
+#cur2{position:fixed;width:36px;height:36px;border:1px solid rgba(152,119,48,.4);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:all .14s ease}
+.grain{position:fixed;inset:0;z-index:9990;pointer-events:none;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:180px;animation:gr .4s steps(2) infinite}
+@keyframes gr{0%{transform:translate(0,0)}50%{transform:translate(1%,2%)}100%{transform:translate(-1%,-2%)}}
+.hdr{position:fixed;inset:0 0 auto;z-index:200;height:clamp(64px,6.25vw,120px);display:flex;align-items:center;padding:0 var(--pad);background:rgba(11,12,16,.4);backdrop-filter:blur(10px);opacity:0;pointer-events:none;transition:opacity .6s ease}
+.hdr.show{opacity:1;pointer-events:all}
+.hdr-inner{width:100%;display:flex;align-items:center;justify-content:space-between;position:relative}
+.hdr-nav{display:flex;gap:clamp(1rem,2.5vw,3rem);font-size:.78rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase}
+.hdr-nav a{opacity:.65;transition:opacity .2s}.hdr-nav a:hover{opacity:1}.hdr-nav .gld{color:var(--gold);opacity:1}
+.hdr-logo{position:absolute;left:50%;transform:translateX(-50%)}
+.hdr-ctas{display:flex;gap:.6rem}
+.btn{display:inline-flex;align-items:center;justify-content:center;text-align:center;padding:.85rem 1.5rem;border-radius:var(--r);font-family:var(--fb);font-weight:700;font-size:.75rem;line-height:1.2;transition:all .2s;white-space:normal;border:none;cursor:none}
+.btn-cream{background:var(--cream);color:#000}.btn-cream:hover{background:#fff}
+.btn-teal{background:var(--teal);color:var(--cream)}.btn-teal:hover{background:#234f52}
+.btn-ghost{background:rgba(0,0,0,.4);border:1px solid rgba(240,238,233,.15);color:var(--cream);padding:.9rem 2rem}.btn-ghost:hover{background:rgba(0,0,0,.65)}
+#globe-stage{position:fixed;inset:0;z-index:10;background:var(--bg)}
+#globe-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.globe-hint{position:absolute;bottom:2.5rem;left:50%;transform:translateX(-50%);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(240,238,233,.38);animation:pulse 2.5s ease-in-out infinite;pointer-events:none;white-space:nowrap}
+@keyframes pulse{0%,100%{opacity:.38}50%{opacity:.85}}
+#page{opacity:0;transition:opacity .8s ease}
+#page.show{opacity:1}
+#caro{background:var(--bg);padding-top:clamp(80px,8vw,130px);padding-bottom:clamp(3rem,5vw,6rem)}
+.caro-top{text-align:center;padding:0 var(--pad);margin-bottom:clamp(1.5rem,3vw,3rem)}
+.caro-top h2{font-family:var(--fd);font-weight:400;font-size:clamp(2.5rem,5.5vw,6.5rem);color:var(--cream);line-height:1}
+.caro-top p{margin-top:.9rem;color:var(--gold);font-size:clamp(.9rem,1.1vw,1.2rem);font-weight:300}
+.caro-meta{display:flex;justify-content:space-between;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);opacity:.8;padding:0 var(--pad);margin-bottom:1.25rem}
+.caro-track-wrap{position:relative}
+.caro-track{display:flex;align-items:center;justify-content:center;gap:clamp(.5rem,1vw,.9rem);padding:1rem var(--pad) 1.5rem;overflow-x:auto;scrollbar-width:none;min-height:620px}
+.caro-track::-webkit-scrollbar{display:none}
+.caro-arr-prev,.caro-arr-next{position:absolute;top:50%;transform:translateY(-50%);z-index:10;pointer-events:all}
+.caro-arr-prev{left:clamp(10px,1.5vw,28px)}
+.caro-arr-next{right:clamp(10px,1.5vw,28px)}
+.cc{flex:0 0 auto;position:relative;border-radius:var(--r);overflow:hidden;cursor:none;transition:all .5s cubic-bezier(.23,1,.32,1)}
+.cc.active{width:clamp(280px,29vw,520px);height:clamp(400px,54vh,680px);filter:none}
+.cc.s1{width:clamp(130px,13vw,225px);height:clamp(290px,42vh,520px);filter:grayscale(1) brightness(.48)}
+.cc.s2{width:clamp(95px,9.5vw,165px);height:clamp(225px,33vh,420px);filter:grayscale(1) brightness(.28)}
+.cc.s3{width:clamp(65px,6.5vw,110px);height:clamp(165px,22vh,300px);filter:grayscale(1) brightness(.14);opacity:.4}
+.cc video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.cc-ov{position:absolute;inset:0;background:linear-gradient(180deg,transparent 28%,rgba(0,0,0,.9) 100%);z-index:1}
+.cc-body{position:absolute;bottom:0;left:0;right:0;z-index:2;padding:clamp(.9rem,1.8vw,1.6rem);opacity:0;transition:opacity .4s;display:flex;flex-direction:column;gap:.3rem}
+.cc.active .cc-body{opacity:1}
+.cc-like{position:absolute;top:.9rem;right:.9rem;z-index:3;width:30px;height:30px;display:flex;align-items:center;justify-content:center;transition:color .2s;color:var(--cream)}
+.cc-like:hover,.cc-like.on{color:var(--gold)}
+.cc-like svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.6}
+.cc-cat{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;opacity:.65;color:var(--cream)}
+.cc-title{font-family:var(--fd);font-weight:600;font-size:clamp(1.5rem,2.8vw,2.8rem);text-transform:uppercase;line-height:.95;color:var(--cream)}
+.cc-cta{margin-top:.5rem;font-size:.72rem;padding:.6rem 1.3rem;align-self:flex-start}
+.caro-award{text-align:center;font-size:clamp(.78rem,.9vw,1rem);color:var(--cream);opacity:.58;padding:.75rem var(--pad) 0;min-height:2rem}
+.caro-arrows{display:flex;justify-content:center;gap:.7rem;margin-top:1.5rem}
+.arr{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;transition:background .2s}
+.arr:hover{background:rgba(255,255,255,.15)}
+.arr svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
+.arr.p svg{transform:rotate(180deg)}
+.sec{padding:clamp(4rem,8vw,9rem) var(--pad)}
+.eyebrow{font-family:var(--fd);font-size:clamp(1rem,1.4vw,1.5rem);color:var(--gold);margin-bottom:1rem}
+.sec-title{font-family:var(--fd);font-weight:400;font-size:clamp(2.5rem,5.5vw,6.5rem);color:var(--cream);line-height:1.02;letter-spacing:-.01em}
+#stats{position:relative;overflow:hidden}
+.stats-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5;pointer-events:none}
+.stats-ov{position:absolute;inset:0;background:rgba(11,12,16,.55)}
+.stats-in{position:relative;z-index:1;display:grid;grid-template-columns:1.25fr 1fr;gap:5rem;align-items:center}
+.stats-lead{font-size:clamp(1rem,1.35vw,1.45rem);color:var(--cream);opacity:.8;max-width:42ch;line-height:1.55}
+.stats-grid{display:grid;gap:2.25rem}
+.sn{font-family:var(--fd);font-size:clamp(1.4rem,2.2vw,2.6rem);font-weight:400;color:var(--cream)}
+.sn b{font-size:1.65em;display:block;line-height:1;font-weight:400}
+.sn.acc{color:var(--gold)}.sc{font-size:.85rem;color:rgba(240,238,233,.42);margin-top:.2rem}
+@media(max-width:800px){.stats-in{grid-template-columns:1fr}}
+.mq{overflow:hidden;border-top:1px solid rgba(240,238,233,.06);border-bottom:1px solid rgba(240,238,233,.06);padding:1.1rem 0}
+.mq-t{display:flex;gap:3.5rem;animation:mq 26s linear infinite;width:max-content}
+.mq-t span{font-family:var(--fd);font-size:clamp(1.1rem,1.8vw,1.9rem);color:var(--gold);opacity:.45;text-transform:uppercase;letter-spacing:.1em;white-space:nowrap}
+@keyframes mq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.stmt p{font-family:var(--fd);font-size:clamp(1.2rem,2vw,2.1rem);color:var(--gold);max-width:58ch;line-height:1.4}
+#formats{position:relative;overflow:hidden;min-height:85vh;display:flex;align-items:flex-end}
+.fmt-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.fmt-bg-ov{position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,12,16,.08) 0%,rgba(11,12,16,.92) 100%)}
+.fmt-in{position:relative;z-index:1;padding:clamp(3rem,6vw,7rem) var(--pad)}
+.fmt-lead{font-family:var(--fd);font-weight:500;font-size:clamp(1rem,1.35vw,1.45rem);color:var(--cream);opacity:.82;max-width:46ch;margin-top:1.25rem;line-height:1.55}
+.fmt-grid{padding:clamp(1.5rem,3vw,3rem) var(--pad);display:grid;grid-template-columns:repeat(2,1fr);gap:clamp(.75rem,1.4vw,1.4rem)}
+.fmc{position:relative;border-radius:var(--r);overflow:hidden;aspect-ratio:856/450;transition:transform .4s cubic-bezier(.23,1,.32,1)}
+.fmc:hover{transform:scale(1.012)}
+.fmc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.fmc-ov{position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,12,16,.04) 0%,rgba(11,12,16,.78) 100%);z-index:1}
+.fmc-body{position:absolute;bottom:0;left:0;right:0;z-index:2;padding:clamp(1rem,2.2vw,2rem);display:flex;flex-direction:column;align-items:center;gap:.6rem;text-align:center}
+.fmc-title{font-family:var(--fd);font-weight:600;font-size:clamp(1.4rem,2.3vw,2.7rem);color:var(--cream);text-transform:uppercase;opacity:.92;line-height:1.05}
+.fmc-desc{font-size:clamp(.72rem,.85vw,.88rem);color:var(--gold);max-width:34ch;line-height:1.4}
+@media(max-width:700px){.fmt-grid{grid-template-columns:1fr}}
+.fmt-cta{padding:clamp(1.5rem,3vw,3rem) var(--pad);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:2rem}
+.fmt-cta p{color:var(--gold);font-size:clamp(.95rem,1.3vw,1.4rem);max-width:33ch}
+.fmt-cta-btns{display:flex;gap:.75rem;flex-wrap:wrap}
+.fnd{display:grid;grid-template-columns:280px 1fr;gap:clamp(3rem,5vw,6rem);align-items:center}
+.fnd.rev{grid-template-columns:1fr 280px}
+.fnd.rev .fnd-media{order:2}
+.fnd-photo{width:100%;aspect-ratio:264/352;object-fit:cover;object-position:top;border-radius:var(--r);display:block}
+.fnd-name{font-family:var(--fd);font-size:clamp(2.5rem,5vw,6.5rem);font-weight:400;color:var(--cream);line-height:1}
+.fnd-role{font-size:clamp(.9rem,1.1vw,1.2rem);color:var(--gold);margin:.6rem 0 1.25rem;font-weight:500}
+.fnd-bio{font-size:clamp(.95rem,1.15vw,1.3rem);color:var(--cream);opacity:.82;max-width:56ch;line-height:1.6;margin-bottom:.9rem}
+@media(max-width:800px){.fnd,.fnd.rev{grid-template-columns:1fr}.fnd.rev .fnd-media{order:-1}.fnd-photo{max-width:240px;margin:auto}}
+#recog{position:relative;overflow:hidden}
+.rec-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center bottom;opacity:.4}
+.rec-ov{position:absolute;inset:0;background:rgba(11,12,16,.6)}
+.rec-in{position:relative;z-index:1}
+.rec-title{font-family:var(--fd);font-size:clamp(1.2rem,1.85vw,2rem);color:var(--gold);max-width:40ch;margin-bottom:2.75rem;font-weight:400;line-height:1.35}
+.aw-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2.25rem 1.75rem}
+.aw{display:flex;flex-direction:column;gap:.6rem}
+.aw img{height:44px;width:auto;max-width:130px;object-fit:contain;object-position:left}
+.aw p{font-size:.76rem;color:#fff;line-height:1.45;max-width:26ch;opacity:.88}
+.aw.wide{grid-column:span 2}
+@media(max-width:900px){.aw-grid{grid-template-columns:repeat(2,1fr)}.aw.wide{grid-column:span 1}}
+.team-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1.1rem;margin:2.75rem 0}
+.tm-photo{width:100%;aspect-ratio:243/304;object-fit:cover;object-position:top center;border-radius:var(--r);margin-bottom:.65rem;display:block}
+.tm-role{font-size:.68rem;color:var(--gold);margin-bottom:.2rem;line-height:1.3}
+.tm-name{font-family:var(--fd);font-size:clamp(.95rem,1.35vw,1.5rem);color:#fff;line-height:1.1}
+.team-cta{display:flex;gap:.75rem;flex-wrap:wrap}
+@media(max-width:900px){.team-grid{grid-template-columns:repeat(2,1fr)}}
+.req-wrap{display:grid;grid-template-columns:1.4fr 1fr;gap:4rem;align-items:center}
+.req-title{font-family:var(--fd);font-size:clamp(2.5rem,5vw,6.5rem);font-weight:400;color:#fff;margin-bottom:1.75rem;line-height:1}
+.req-cols{display:grid;grid-template-columns:1fr 1fr;gap:1.75rem}
+.req-cols p{font-size:clamp(.82rem,.95vw,1.05rem);color:#fff;opacity:.78;line-height:1.6;margin-bottom:.9rem}
+.req-img{width:100%;border-radius:var(--r);object-fit:cover;aspect-ratio:634/927;display:block}
+@media(max-width:900px){.req-wrap,.req-cols{grid-template-columns:1fr}}
+.press-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:2.25rem;flex-wrap:wrap;gap:1rem}
+.press-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(1rem,1.8vw,1.75rem)}
+.pc img{width:100%;aspect-ratio:412/302;object-fit:cover;border-radius:var(--r);margin-bottom:.65rem;display:block}
+.pc-date{font-size:.68rem;color:var(--gold);margin-bottom:.35rem}
+.pc-title{font-size:clamp(.88rem,1.2vw,1.35rem);color:#fff;margin-bottom:.35rem;line-height:1.25;font-weight:500}
+.pc-text{font-size:.74rem;color:#fff;opacity:.6;line-height:1.45}
+@media(max-width:900px){.press-grid{grid-template-columns:repeat(2,1fr)}}
+#contacts{position:relative;overflow:hidden;min-height:100vh}
+.contacts-bg-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:0}
+.contacts-bg-ov{position:absolute;inset:0;background:rgba(5,8,18,.65);z-index:1}
+.con-in{position:relative;z-index:2;display:grid;grid-template-columns:1fr 1fr;gap:clamp(2rem,5vw,6rem);align-items:start;padding-top:clamp(4rem,8vw,9rem);padding-bottom:clamp(4rem,8vw,9rem);padding-left:var(--pad);padding-right:var(--pad)}
+.con-left{}
+.con-right{display:flex;flex-direction:column;gap:2.25rem}
+.con-lead{font-family:var(--fd);font-size:clamp(1.1rem,1.7vw,1.9rem);color:var(--gold);max-width:30ch;margin:.9rem 0 0;font-weight:400;line-height:1.35}
+.cb{margin-bottom:0}
+.cb h3{font-family:var(--fd);font-size:clamp(.95rem,1.2vw,1.35rem);color:var(--gold);margin-bottom:.6rem;font-weight:400}
+.cb-val{font-size:clamp(.95rem,1.3vw,1.4rem);color:var(--cream);margin-bottom:.2rem}
+.cb-val a{text-decoration:underline;text-underline-offset:3px;opacity:.85}
+.soc{display:flex;gap:.5rem;margin-top:.6rem}
+.sb{width:46px;height:46px;border-radius:var(--r);background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;transition:background .2s;border:1px solid rgba(255,255,255,.12)}
+.sb:hover{background:rgba(255,255,255,.18)}.sb svg{width:17px;height:17px}
+/* Form — dark glass card, placeholder-style fields */
+.cf{background:rgba(15,20,38,.7);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);padding:clamp(1.5rem,3vw,2.5rem);display:flex;flex-direction:column;gap:.85rem;backdrop-filter:blur(4px)}
+.cf-intro{font-family:var(--fd);font-size:clamp(1rem,1.3vw,1.4rem);color:var(--cream);margin-bottom:.25rem;font-weight:400;line-height:1.35}
+.ff{display:flex;flex-direction:column}
+.ff label{display:none}/* labels hidden — placeholders used instead */
+.ff input,.ff select,.ff textarea{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:var(--r);padding:.9rem 1.1rem;font-family:var(--fb);font-size:.9rem;color:var(--cream);outline:none;transition:border-color .2s}
+.ff input::placeholder,.ff textarea::placeholder{color:rgba(240,238,233,.45)}
+.ff input:focus,.ff select:focus,.ff textarea:focus{border-color:rgba(152,119,48,.5)}
+.ff select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(240,238,233,.5)' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .9rem center;background-size:15px;padding-right:2.25rem;background-color:rgba(255,255,255,.07)}
+.ff select option{background:#0b0c10;color:var(--cream)}
+.ff textarea{resize:vertical;min-height:100px}
+.fcon{display:flex;gap:.65rem;align-items:flex-start;margin-top:.25rem}
+.fcon input[type=checkbox]{width:18px;height:18px;flex:none;accent-color:var(--teal);margin-top:2px}
+.fcon label{font-size:.74rem;color:var(--cream);line-height:1.45;opacity:.6}
+.fsub{display:none}/* Submit button hidden per design — form submits via checkbox confirm */
+@media(max-width:900px){.con-in{grid-template-columns:1fr;padding-left:var(--pad);padding-right:var(--pad)}}
+.ftr{position:relative;background:var(--bg);padding:clamp(3rem,6vw,7rem) var(--pad) 2rem;overflow:hidden}
+.ftr-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.3;pointer-events:none}
+.ftr-in{position:relative;z-index:1;display:grid;grid-template-columns:repeat(4,1fr);gap:2.75rem}
+.ftr-brand{font-weight:700;font-size:1.05rem;margin-bottom:1.1rem}
+.ftr h3{font-weight:700;font-size:.95rem;margin-bottom:1.1rem;opacity:.9}
+.ftr ul li{margin-bottom:.9rem;font-size:.9rem;opacity:.65;line-height:1.35}
+.ftr-contact p{font-size:.9rem;margin-bottom:.5rem;opacity:.8}
+.ftr-contact a{text-decoration:underline;text-underline-offset:2px}
+.ftr-legal li{font-size:.8rem;line-height:1.4}
+@media(max-width:900px){.ftr-in{grid-template-columns:repeat(2,1fr)}}
+.st{position:fixed;right:1.75rem;bottom:1.75rem;z-index:80;width:50px;height:50px;border-radius:50%;background:rgba(152,119,48,.18);border:1px solid rgba(152,119,48,.38);display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:all .3s;color:var(--gold)}
+.st.show{opacity:1;visibility:visible}
+.st svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2}
+.rv{opacity:0;transform:translateY(26px);transition:opacity .72s cubic-bezier(.23,1,.32,1),transform .72s cubic-bezier(.23,1,.32,1)}
+.rv.in{opacity:1;transform:translateY(0)}
+.d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}.d4{transition-delay:.4s}
+#tov{position:fixed;inset:0;z-index:500;background:var(--bg);pointer-events:none;opacity:0;transition:opacity .5s}
+</style>
+</head>
+<body>
+<div id="cur"></div><div id="cur2"></div>
+<div class="grain"></div><div id="tov"></div>
+<div id="globe-stage">
+  <canvas id="globe-canvas"></canvas>
+  <div class="globe-hint" id="ghint">Вращайте · Нажмите на проект чтобы открыть</div>
+</div>
+<header class="hdr" id="hdr">
+  <div class="hdr-inner">
+    <nav class="hdr-nav"><a href="#collection" class="gld">Коллекция событий</a><a href="#formats">Форматы событий</a></nav>
+    <a class="hdr-logo" href="/">
+      <svg width="156" height="105" viewBox="0 0 156 105" fill="none" style="height:clamp(38px,4.8vw,86px);width:auto;display:block">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M78.8351 52.85C76.3738 50.225 72.9281 48.875 69.0658 49.25L69.1794 48.9C70.2397 45.7125 71.0601 42.0875 70.9591 38.6625C70.896 36.6875 70.4542 33.975 68.561 32.725C67.2862 31.875 65.7211 31.9375 64.3074 32.2875C49.7293 35.9125 39.5056 71.4 55.5479 72.6125H55.7625L55.6741 72.45C50.9915 62.85 55.4722 38.975 64.8754 34.5375C65.4686 34.2625 66.0997 34.1375 66.7434 34.3625C67.6522 34.675 67.791 36.3375 67.8289 37.075C68.0056 40.5875 66.9832 44.65 66.0745 47.9375C65.9735 48.3125 65.8599 48.6875 65.7463 49.05C65.6327 49.4 65.5065 49.75 65.3929 50.1C64.0297 50.6125 62.6792 51.2875 61.5306 52.2C60.0413 53.3625 58.4509 55.05 58.3752 57.0375C58.3499 57.775 58.5771 58.45 59.1451 58.975C60.3442 60.075 62.7802 59.3375 64.5851 57.325C65.2414 56.5875 65.9483 55.6 66.4531 54.775C67.4376 53.1375 68.3716 51.175 68.3843 51.1375C71.4892 50.9875 73.7738 52.5 74.9854 54.975C76.0962 54.05 77.4467 53.375 78.8351 52.8875V52.85ZM61.1267 56.9375C60.7733 56.9125 60.9374 56.1125 61.4801 55.1375C62.1617 53.9375 63.3482 52.9125 64.5346 52.225C63.8657 53.5125 61.8336 56.975 61.1267 56.9375Z" fill="#987730"/>
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M76.3494 62.0758C76.2484 62.4008 76.16 62.7383 76.1096 63.1258C75.6173 65.1008 75.2008 66.6883 74.4182 68.3633C71.7677 75.8883 60.976 80.4633 48.6319 78.8008C36.5277 77.1758 26.973 70.1008 25.4962 62.2383L25.37 62.2633C22.1136 62.6508 20.4097 66.0133 22.2903 69.1383C23.8302 71.7133 27.1371 74.0258 29.1187 75.2508C41.021 82.6133 59.3226 83.7883 71.023 77.7758C75.8697 75.2883 80.8175 70.4383 81.8903 64.5133C82.0418 63.6508 82.1175 62.7758 82.1301 61.9008C81.8777 61.9008 81.6253 61.8758 81.3728 61.8633C79.6941 61.9258 78.0281 62.0383 76.3494 62.0758Z" fill="#987730"/>
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M95.9768 43.0753C93.8943 36.9628 89.5524 33.5003 85.8794 32.7628C82.3453 32.0503 79.3413 34.1003 79.7957 37.6128C79.8462 37.9878 79.9346 38.3503 80.0482 38.7253C79.8967 38.3003 79.7831 37.8628 79.7326 37.4128C79.2782 33.9003 82.2822 31.8503 85.8163 32.5628C89.5271 33.3128 93.9195 36.8378 95.9768 43.0753ZM96.8477 46.7253C95.5351 38.2003 90.1961 33.4378 85.8163 32.5503C82.2822 31.8378 79.2782 33.8878 79.7326 37.4003C79.8967 38.7003 80.5278 39.9878 81.3103 40.9753C84.4153 44.8878 91.4078 46.6128 96.8477 46.7253ZM80.0734 71.1503C83.2667 72.2128 86.9901 71.4378 90.0194 69.4628C91.9505 68.2003 93.5535 66.4753 94.6389 64.4878C97.1759 59.8628 97.6177 53.6878 97.1885 49.2128V49.1753H96.204C90.297 49.1003 81.121 47.3128 77.3976 42.8003C76.2743 41.4503 75.6305 39.7503 75.5548 38.0503C75.4538 35.5503 76.7034 33.3003 78.4957 32.0253C82.4084 29.2378 88.6815 30.7003 92.1398 33.5753C96.204 36.9503 98.4255 41.7253 99.5236 46.6878C116.109 46.0003 130.826 35.4003 134.233 24.1378C134.309 23.9128 134.36 23.7003 134.41 23.5003C134.486 23.2003 134.536 22.9378 134.574 22.5878C134.612 22.2378 134.612 21.8253 134.574 21.4753C135.054 21.3503 135.521 21.2753 135.988 21.2628C139.471 21.1878 139.636 24.9503 138.651 27.3628C137.237 30.8378 133.64 34.7753 131.608 36.6003C124.149 43.2753 112.612 48.6003 99.9527 49.0753C99.9527 49.1378 99.9527 49.1503 99.9653 49.2253C100.584 54.1753 100.104 60.9003 97.3779 66.0753C94.1341 72.2128 88.2776 75.6378 81.2599 74.4503C80.4142 74.3128 79.5938 74.0878 78.8112 73.7753C79.3035 72.9503 79.72 72.0878 80.0482 71.2003L80.0734 71.1628V71.1503ZM87.962 65.4128C87.7853 64.4378 87.4571 63.4503 86.9649 62.4878C84.226 57.1628 75.1509 56.4878 74.5829 63.4003C74.482 64.5753 74.6713 65.6753 75.0878 66.6628C75.0373 66.8753 74.9995 67.0878 74.9616 67.3128C74.6965 68.4003 74.4441 69.3628 74.1538 70.2878C72.4751 68.1503 71.6294 65.4378 72.0333 62.5503C72.6139 58.4628 75.3529 54.9878 79.2151 53.4878C90.3349 49.1503 96.2167 60.6128 87.9746 65.4253H87.962V65.4128Z" fill="#987730"/>
+      </svg>
+    </a>
+    <nav class="hdr-nav"><a href="#about">Big Jack</a><a href="#contacts">Контакты</a></nav>
+    <div class="hdr-ctas">
+      <a class="btn btn-cream" href="#contacts">Оставить заявку<br>на организацию события</a>
+      <a class="btn btn-teal" href="#contacts">Обсудить мероприятие<br>с Ai-консьержем</a>
+    </div>
+  </div>
+</header>
+<div id="page">
+  <section id="collection" style="padding-top:clamp(80px,8vw,130px);padding-bottom:clamp(3rem,5vw,6rem)">
+    <div class="caro-top rv"><h2>Big Jack Experience</h2><p>Мы режиссируем впечатления для тех, кто привык к невозможному</p></div>
+    <div class="caro-meta rv d1"><span id="cy">2025</span><span id="cl">Россия, Италия, Сербия</span></div>
+    <div class="caro-track-wrap">
+      <button class="arr caro-arr-prev" id="pb"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="caro-track" id="ct"></div>
+      <button class="arr caro-arr-next" id="nb"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+    </div>
+    <div class="caro-award rv" id="ca"></div>
+  </section>
+  <section id="stats" class="sec">
+    <img class="stats-bg" src="https://www.figma.com/api/mcp/asset/edf622df-8045-4e7f-9ff0-5605dfc453f4" alt="">
+    <div class="stats-ov"></div>
+    <div class="stats-in">
+      <div><p class="eyebrow rv">#исключительность</p><p class="stats-lead rv d1">Создаём события с авторской драматургией, эстетикой и вниманием к каждой детали.<br>Для клиентов, выбирающих исключительный уровень впечатлений.</p></div>
+      <dl class="stats-grid">
+        <div class="rv"><dt class="sn acc"><b>430+</b>проектов</dt><dd class="sc">реализовано по всему миру</dd></div>
+        <div class="rv d1"><dt class="sn"><b>16</b>стран</dt><dd class="sc">география наших проектов</dd></div>
+        <div class="rv d2"><dt class="sn"><b>19</b>наград</dt><dd class="sc">и отраслевых премий выиграно</dd></div>
+        <div class="rv d3"><dt class="sn"><b>16</b>лет</dt><dd class="sc">создаём события мирового уровня</dd></div>
+      </dl>
+    </div>
+  </section>
+  <div class="mq"><div class="mq-t"><span>Big Jack Ecosystem</span><span>·</span><span>Big Jack Ecosystem</span><span>·</span><span>Big Jack Ecosystem</span><span>·</span><span>Big Jack Ecosystem</span><span>·</span><span>Big Jack Ecosystem</span><span>·</span><span>Big Jack Ecosystem</span><span>·</span><span>Big Jack Ecosystem</span><span>·</span><span>Big Jack Ecosystem</span><span>·</span></div></div>
+  <section class="sec stmt"><p class="rv">Big Jack — поставщик ивент-решений для аудитории с максимально высокими требованиями. Партнёр ведущих family-офисов, private banking и премиальных concierge-сервисов стран СНГ и региона МЕНА.</p></section>
+  <section id="formats"><img class="fmt-bg" src="https://www.figma.com/api/mcp/asset/c92782ad-ea5b-4123-a7d9-643c9c46ba12" alt=""><div class="fmt-bg-ov"></div><div class="fmt-in"><h2 class="sec-title rv">Форматы событий</h2><p class="fmt-lead rv d1">Мы создаём события без границ — по масштабу, географии и замыслу. Частные или корпоративные, камерные или грандиозные — каждое из них становится отражением вашего уровня и образа жизни.</p></div></section>
+  <div class="fmt-grid">
+    <div class="fmc rv"><img src="https://www.figma.com/api/mcp/asset/870ee2e1-4f02-450c-a32b-67a0e1d73d67" alt="Личные события"><div class="fmc-ov"></div><div class="fmc-body"><h3 class="fmc-title">Личные события</h3><p class="fmc-desc">Частные моменты, превращённые в события — от изящных ужинов до масштабных праздников.</p><a class="btn btn-ghost" href="#contacts" style="font-size:.73rem;padding:.6rem 1.3rem">Посмотреть коллекцию</a></div></div>
+    <div class="fmc rv d1"><img src="https://www.figma.com/api/mcp/asset/4914ea9f-eea4-4f6d-943d-196093a6739b" alt="Сценарные путешествия"><div class="fmc-ov"></div><div class="fmc-body"><h3 class="fmc-title">Сценарные путешествия</h3><p class="fmc-desc">Путешествия как сюжет — с драматургией и маршрутом, раскрывающимся шаг за шагом.</p><a class="btn btn-ghost" href="#contacts" style="font-size:.73rem;padding:.6rem 1.3rem">Посмотреть коллекцию</a></div></div>
+    <div class="fmc rv"><img src="https://www.figma.com/api/mcp/asset/c3daadc1-79c0-4674-94d9-d7ec67925c41" alt="Киноивенты"><div class="fmc-ov"></div><div class="fmc-body"><h3 class="fmc-title">Киноивенты</h3><p class="fmc-desc">Ваше собственное кино — с режиссурой, актёрами и премьерой, где вы часть истории.</p><a class="btn btn-ghost" href="#contacts" style="font-size:.73rem;padding:.6rem 1.3rem">Посмотреть коллекцию</a></div></div>
+    <div class="fmc rv d1"><img src="https://www.figma.com/api/mcp/asset/ba317f2e-67c8-4574-a364-7ed9e5215a1f" alt="Иммерсивные проекты"><div class="fmc-ov"></div><div class="fmc-body"><h3 class="fmc-title">Иммерсивные проекты</h3><p class="fmc-desc">Миры, в которые вы входите — где граница между зрителем и действием исчезает.</p><a class="btn btn-ghost" href="#contacts" style="font-size:.73rem;padding:.6rem 1.3rem">Посмотреть коллекцию</a></div></div>
+    <div class="fmc rv"><img src="https://www.figma.com/api/mcp/asset/9e1deb8d-2abf-400b-97b6-762cce4a98e9" alt="Мероприятия на яхте"><div class="fmc-ov"></div><div class="fmc-body"><h3 class="fmc-title">Мероприятия на яхте</h3><p class="fmc-desc">Морской бриз, приватность, открытая вода — событие превращается в исключительный опыт.</p><a class="btn btn-ghost" href="#contacts" style="font-size:.73rem;padding:.6rem 1.3rem">Посмотреть коллекцию</a></div></div>
+    <div class="fmc rv d1"><img src="https://www.figma.com/api/mcp/asset/baedf732-ca07-411b-ba45-2c7be2f71b6c" alt="Бизнес-события"><div class="fmc-ov"></div><div class="fmc-body"><h3 class="fmc-title">Бизнес-события</h3><p class="fmc-desc">Среда, в которой решения принимаются иначе — на уровне вашего статуса.</p><a class="btn btn-ghost" href="#contacts" style="font-size:.73rem;padding:.6rem 1.3rem">Посмотреть коллекцию</a></div></div>
+    <div class="fmc rv"><img src="https://www.figma.com/api/mcp/asset/49790653-4535-4653-85ec-441167a7ccae" alt="Маркетинговые мероприятия"><div class="fmc-ov"></div><div class="fmc-body"><h3 class="fmc-title">Маркетинговые мероприятия</h3><p class="fmc-desc">Запуски и презентации, формирующие восприятие через эмоцию и сценарий.</p><a class="btn btn-ghost" href="#contacts" style="font-size:.73rem;padding:.6rem 1.3rem">Посмотреть коллекцию</a></div></div>
+    <div class="fmc rv d1"><img src="https://www.figma.com/api/mcp/asset/b4f58781-cf0d-429b-afca-2ca1f614ab38" alt="Корпоративные мероприятия"><div class="fmc-ov"></div><div class="fmc-body"><h3 class="fmc-title">Корпоративные мероприятия</h3><p class="fmc-desc">Нестандартные форматы, которые объединяют сильнее, чем любые правила.</p><a class="btn btn-ghost" href="#contacts" style="font-size:.73rem;padding:.6rem 1.3rem">Посмотреть коллекцию</a></div></div>
+  </div>
+  <div class="fmt-cta"><p class="rv">Вы можете выбрать один из реализованных нами форматов или доверить нам создание события индивидуально для вас.</p><div class="fmt-cta-btns rv d1"><a class="btn btn-cream" href="#contacts">Оставить заявку на организацию события</a><a class="btn btn-teal" href="#contacts">Обсудить мероприятие с Ai-консьержем</a></div></div>
+  <section id="about" class="sec">
+    <div class="fnd">
+      <div class="fnd-media rv"><img class="fnd-photo" src="https://www.figma.com/api/mcp/asset/06edc1af-fa50-4247-a105-aa3ed8d3157f" alt="Николай Андреев"></div>
+      <div><h2 class="fnd-name rv">Николай<br>Андреев</h2><p class="fnd-role rv d1">Основатель и СЕО Big Jack, главный режиссёр</p><p class="fnd-bio rv d2">Каждый проект в Big Jack начинается с человека — его вкуса, масштаба мышления и стремления проживать жизнь ярко и глубоко.</p><p class="fnd-bio rv d3">Мы создаём события для тех, кто ценит эстетику, эмоции и впечатления, остающиеся в памяти на годы.</p></div>
+    </div>
+  </section>
+  <section id="recog" class="sec">
+    <img class="rec-bg" src="https://www.figma.com/api/mcp/asset/3919859d-9e14-45ec-a292-17b87234529f" alt="">
+    <div class="rec-ov"></div>
+    <div class="rec-in">
+      <p class="rec-title rv">Создаём исключительные события, превращающие важнейшие моменты вашей жизни в произведения искусства</p>
+      <div class="aw-grid">
+        <div class="aw rv"><img src="https://www.figma.com/api/mcp/asset/f86b6b35-d664-43d6-9a03-beec2fe80944" alt="НАОМ"><p>1 место в event рейтинге НАОМ, член ассоциации с 2015 г.</p></div>
+        <div class="aw rv d1"><img src="https://www.figma.com/api/mcp/asset/31c99ea2-fc72-4532-a719-e8b421a74e2e" alt="Золотой орёл"><p>Номинант кинопремии «Золотой орёл — 2025», лучший короткометражный фильм</p></div>
+        <div class="aw rv d2"><img src="https://www.figma.com/api/mcp/asset/c0f53dfc-95d4-48c1-be49-1ec5aefa7e7f" alt="Золотой пазл"><p>Победитель национальной премии «Золотой пазл»</p></div>
+        <div class="aw rv d3"><img src="https://www.figma.com/api/mcp/asset/59efa9a4-54a3-4dac-816f-4fe0fdd7ae53" alt="BEMA"><p>Лучшее выездное мероприятие «Необитаемые Мальдивы»</p></div>
+        <div class="aw rv"><img src="https://www.figma.com/api/mcp/asset/47121e23-7dde-4694-b96d-47346ecddd63" alt="АКМР"><p>Топ-5 сертифицированных event-агентств по версии АКМР</p></div>
+        <div class="aw rv d1"><img src="https://www.figma.com/api/mcp/asset/c7bb048a-0e3e-4b21-a959-d4e7ec31216e" alt="AdIndex"><p>1 место в event рейтинге AdIndex</p></div>
+        <div class="aw rv d2"><img src="https://www.figma.com/api/mcp/asset/71c7150c-27b0-459c-9adc-e2b39ffedae0" alt="All Advertising"><p>Топ-10 лучших event-агентств по версии All Advertising</p></div>
+        <div class="aw wide rv d3"><img src="https://www.figma.com/api/mcp/asset/95b65115-73f5-414a-a4b8-b76a93ed2c14" alt="Событие года"><p>Лучший частный праздник и Гран-при — «Муза» в национальной премии «Событие года — 2025»</p></div>
+      </div>
+    </div>
+  </section>
+  <section class="sec">
+    <div class="fnd rev">
+      <div><h2 class="fnd-name rv">Юлия<br>Бадун</h2><p class="fnd-role rv d1">Управляющий партнёр, арт-директор</p><p class="fnd-bio rv d2">Меня вдохновляют люди, которые тонко чувствуют эстетику жизни, ценят атмосферу и проживают моменты по-настоящему глубоко.</p><p class="fnd-bio rv d3">Именно поэтому каждый проект мы создаём как чувственную историю со своим настроением, ритмом и внутренней энергией.</p></div>
+      <div class="fnd-media rv"><img class="fnd-photo" src="https://www.figma.com/api/mcp/asset/81ed0cca-8a71-418a-8e73-b2b5224176c8" alt="Юлия Бадун"></div>
+    </div>
+  </section>
+  <section class="sec">
+    <h2 class="sec-title rv" style="color:#fff">Люди Big Jack</h2>
+    <div class="team-grid">
+      <div class="rv"><img class="tm-photo" src="https://www.figma.com/api/mcp/asset/68b6ff2a-b1e3-4553-a1e8-d04364f8cef4" alt="Виктория Зуева"><p class="tm-role">Руководитель отдела реализации</p><p class="tm-name">Виктория Зуева</p></div>
+      <div class="rv d1"><img class="tm-photo" src="https://www.figma.com/api/mcp/asset/4992a9b3-0e05-45b2-ae3d-ef3f987f0ac0" alt="Валерия Артюшкова"><p class="tm-role">Исполнительный продюсер</p><p class="tm-name">Валерия Артюшкова</p></div>
+      <div class="rv d2"><img class="tm-photo" src="https://www.figma.com/api/mcp/asset/3c341bae-b058-401d-92be-4f05a99edd30" alt="Елизавета Панюшкина"><p class="tm-role">Директор по стратегическому развитию</p><p class="tm-name">Елизавета Панюшкина</p></div>
+      <div class="rv d3"><img class="tm-photo" src="https://www.figma.com/api/mcp/asset/2084c19f-60a1-4608-b1c0-15689ab3fc43" alt="Анна Герасимова"><p class="tm-role">Дизайнер</p><p class="tm-name">Анна Герасимова</p></div>
+      <div class="rv d4"><img class="tm-photo" src="https://www.figma.com/api/mcp/asset/9b4d1362-2e56-4a8a-8a77-ef1742a46d79" alt="Виктория Зуева"><p class="tm-role">Руководитель отдела реализации</p><p class="tm-name">Виктория Зуева</p></div>
+    </div>
+    <div class="team-cta rv"><a class="btn btn-teal" href="#contacts">Стать частью Big Jack</a><a class="btn btn-teal" href="#contacts">Наши вакансии</a></div>
+  </section>
+  <section class="sec" id="requisites">
+    <div class="req-wrap">
+      <div><h2 class="req-title rv">Реквизиты</h2><div class="req-cols"><div class="rv"><p>ООО «БИГ ДЖЕК»</p><p>ОГРН 1167746430598</p><p>ИНН 9717024629 / КПП 770301001</p><p>Генеральный директор<br>Андреев Николай Владимирович</p></div><div class="rv d1"><p>123112, Москва, Пресненская набережная, д. 12, помещение 10/45</p><p>АО «Альфа-Банк»<br>Р/с 40702810002330001578<br>К/с 30101810200000000593<br>БИК 044525593</p></div></div></div>
+      <div class="rv d2"><img class="req-img" src="https://www.figma.com/api/mcp/asset/3e87a4d9-d428-4b0b-a60e-f5d34486a332" alt="Декоративный цветок"></div>
+    </div>
+  </section>
+  <section class="sec" id="press">
+    <div class="press-hdr"><h2 class="sec-title rv" style="color:#fff;font-size:clamp(2rem,4.5vw,5.5rem)">СМИ о нас</h2><div style="display:flex;gap:.6rem"><button class="arr p"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button><button class="arr"><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button></div></div>
+    <div class="press-grid">
+      <div class="pc rv"><img src="https://www.figma.com/api/mcp/asset/9b4d1362-2e56-4a8a-8a77-ef1742a46d79" alt=""><p class="pc-date">29 августа 2026</p><h3 class="pc-title">Николай Андреев: интервью для Россия-1</h3><p class="pc-text">Николай рассказал, как сегодня разрабатываются мероприятия с предварительным вовлечением сотрудников.</p></div>
+      <div class="pc rv d1"><img src="https://www.figma.com/api/mcp/asset/d4cfe5e7-ecae-4835-a41d-e4d8b02a620c" alt=""><p class="pc-date">29 августа 2026</p><h3 class="pc-title">Николай Андреев: интервью для Россия-1</h3><p class="pc-text">Николай рассказал, как сегодня разрабатываются мероприятия с предварительным вовлечением сотрудников.</p></div>
+      <div class="pc rv d2"><img src="https://www.figma.com/api/mcp/asset/9679b6f5-751e-426f-945f-a80a974f10af" alt=""><p class="pc-date">29 августа 2026</p><h3 class="pc-title">Николай Андреев: интервью для Россия-1</h3><p class="pc-text">Николай рассказал, как сегодня разрабатываются мероприятия с предварительным вовлечением сотрудников.</p></div>
+      <div class="pc rv d3"><img src="https://www.figma.com/api/mcp/asset/66b660d7-6925-4e85-9e85-fe1ccacac594" alt=""><p class="pc-date">29 августа 2026</p><h3 class="pc-title">Николай Андреев: интервью для Россия-1</h3><p class="pc-text">Николай рассказал, как сегодня разрабатываются мероприятия с предварительным вовлечением сотрудников.</p></div>
+    </div>
+  </section>
+  <section id="contacts">
+    <img class="contacts-bg-img" src="https://www.figma.com/api/mcp/asset/3919859d-9e14-45ec-a292-17b87234529f" alt="">
+    <div class="contacts-bg-ov"></div>
+    <div class="con-in">
+      <div class="con-left">
+        <h2 class="sec-title rv">Контакты</h2>
+        <p class="con-lead rv d1">Ваше событие рождается в воображении.<br>Мы воплощаем его в реальность.</p>
+      </div>
+      <div class="con-right">
+        <div class="cb rv">
+          <h3>Свяжитесь с нами напрямую</h3>
+          <p class="cb-val"><a href="tel:+79857600801">+7 985 760-08-01</a></p>
+          <p class="cb-val"><a href="mailto:sales@bigjack24.ru">sales@bigjack24.ru</a></p>
+          <div class="soc">
+            <a class="sb" href="#" aria-label="Telegram"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.328 13.99l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.82.569z"/></svg></a>
+            <a class="sb" href="#" aria-label="WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.117.554 4.103 1.522 5.83L0 24l6.335-1.652A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg></a>
+          </div>
+        </div>
+        <div class="cb rv d1">
+          <h3>Мы в социальных сетях</h3>
+          <div class="soc">
+            <a class="sb" href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.5"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
+            <a class="sb" href="#" aria-label="Telegram"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.328 13.99l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.82.569z"/></svg></a>
+            <a class="sb" href="#" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></a>
+          </div>
+        </div>
+        <div class="cb rv d2">
+          <h3>Личные социальные сети Николая</h3>
+          <div class="soc">
+            <a class="sb" href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.5"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
+            <a class="sb" href="#" aria-label="Telegram"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.328 13.99l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.82.569z"/></svg></a>
+            <a class="sb" href="#" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></a>
+          </div>
+        </div>
+        <div class="cb rv d3">
+          <h3>Личные социальные сети Юлии</h3>
+          <div class="soc">
+            <a class="sb" href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.5"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
+          </div>
+        </div>
+        <form class="cf rv d4" novalidate>
+          <p class="cf-intro">Укажите удобный способ связи и мы обсудим ваше событие в приватном диалоге</p>
+          <div class="ff"><label>Имя</label><input type="text" name="name" placeholder="Ваше имя" required></div>
+          <div class="ff"><label>Способ</label><select name="channel"><option value="" disabled selected>Предпочтительный способ связи</option><option>Телефон</option><option>WhatsApp</option><option>Telegram</option><option>Email</option></select></div>
+          <div class="ff"><label>Контакт</label><input type="text" name="contact" placeholder="Ваш контакт" required></div>
+          <div class="ff"><label>Доп</label><input type="text" name="contact2" placeholder="Дополнительный контакт"></div>
+          <div class="ff"><label>Запрос</label><textarea name="message" rows="4" placeholder="Расскажите о вашем запросе"></textarea></div>
+          <div class="fcon">
+            <input type="checkbox" id="fc" required>
+            <label for="fc">Я соглашаюсь с Политикой обработки персональных данных, условиями договора-оферты и даю согласие на получение информационных и рекламных материалов.</label>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+  <footer class="ftr">
+    <img class="ftr-bg" src="https://www.figma.com/api/mcp/asset/d3166b6b-fef5-4a54-8308-631317697634" alt="">
+    <div class="ftr-in">
+      <div><p class="ftr-brand">BIG JACK</p><ul><li><a href="#about">О компании</a></li><li><a href="#requisites">Реквизиты</a></li><li><a href="#about">Стать частью BJ</a></li><li><a href="#press">СМИ о нас</a></li></ul></div>
+      <div class="ftr-contact"><h3>Контакты</h3><p><a href="tel:+79857600801">+7 985 760-08-01</a></p><p><a href="mailto:sales@bigjack24.ru">sales@bigjack24.ru</a></p></div>
+      <div><h3>Социальные сети</h3></div>
+      <div><ul class="ftr-legal"><li><a href="#">Политика конфиденциальности</a></li><li><a href="#">Пользовательское соглашение</a></li><li><a href="#">Использование cookie</a></li><li><a href="#requisites">Реквизиты и информация о компании</a></li><li><a href="#">Публичная оферта</a></li><li><a href="#">Согласие на обработку персональных данных</a></li><li><a href="#">Согласие на получение рекламных рассылок</a></li></ul></div>
+    </div>
+  </footer>
+</div>
+<button class="st" id="st"><svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const VIDEO_FILES={
+  '1cW-B2d6wyhj8s4wNoP48B_rOgBArRkgf':'videos/01_Muse.mp4',
+  '1bMdnTYyJnygwWSJny6DO80r7Pv08tg4p':'videos/02_Predators.mp4',
+  '12LVoxVhEsfpwXvEiBEOMqs9U-br4p-Qw':'videos/03_Galapagos.mp4',
+  '12LVoxVhEsfpwXvEiBEOMqs9U-rb4p-Qw2':'videos/03_Galapagos.mp4',
+  '1uD5STZ1lfKaJDM3EM-DPRL3rNPFB7ZdX':'videos/04_Haier_Dream_Land.mp4',
+  '1bCLNK2AEWLd1-VyUfFhork0uHLSIQ_6i':'videos/05_Marsa_Al_Arab.mp4',
+  '12DKKLYjhj4Vmj6IkY9yQMSZ39ve42fWE':'videos/06_Toda.mp4',
+  '1rjRhHeuvFry0TsvhBVTUEJm9mJ_r5OvP':'videos/07_Lily_s_evening.mp4',
+  '1O-x_se7_wwI1Fo2NFuZGl1xJg0k1M5x4':'videos/08_Legends_Sokolov.mp4',
+  '1tazXGgpeRZTb92SO3SNX1CR6H2bqmiZE':'videos/09_Edem_dalshe.mp4',
+  '1b2zYQh7Z6yO7tOlEKJBSzBEraV6yU7ha':'videos/10_Kuskovo.mp4',
+  '1-J503y8J_9qbJBNASfTaEbOm2vvU2ujM':'videos/11_Dom_moey_dushi.mp4',
+  '125rXyL2vXD0Rmi-25GqK3noCt-_ZrCTM':'videos/12_Finstar.mp4',
+};
+function gd(id){return VIDEO_FILES[id]||''}
+const VIDS=[
+  {id:'1cW-B2d6wyhj8s4wNoP48B_rOgBArRkgf',label:'МУЗА',cat:'киноивент',award:'Победитель премии «Событие года 2025» в номинации «Частный праздник»',meta:'2025, Россия, Италия, Сербия',href:'event-muza.html'},
+  {id:'1bMdnTYyJnygwWSJny6DO80r7Pv08tg4p',label:'ХИЩНИКИ',cat:'выездной MICE-проект',award:'Топ-5 event-агентств по версии АКМР',meta:'2025, Россия',href:'#'},
+  {id:'12LVoxVhEsfpwXvEiBEOMqs9U-br4p-Qw',label:'ГАЛАПАГОСЫ',cat:'научная экспедиция',award:'Частная экспедиция с учёными и съёмочной группой',meta:'2025, Эквадор',href:'#'},
+  {id:'1uD5STZ1lfKaJDM3EM-DPRL3rNPFB7ZdX',label:'HAIER DREAMLAND',cat:'корпоративный Новый год',award:'Лучшее корпоративное мероприятие года',meta:'2025, Россия',href:'#'},
+  {id:'1bCLNK2AEWLd1-VyUfFhork0uHLSIQ_6i',label:'MARSA AL ARAB',cat:'выездное событие',award:'',meta:'2025, ОАЭ',href:'#'},
+  {id:'12DKKLYjhj4Vmj6IkY9yQMSZ39ve42fWE',label:'TODA',cat:'Ai-экспириенс',award:'Иммерсивный проект на стыке технологий и театра',meta:'2025, Россия',href:'#'},
+  {id:'1rjRhHeuvFry0TsvhBVTUEJm9mJ_r5OvP',label:"LILY'S EVENING",cat:'личное событие',award:'',meta:'2025, Россия',href:'#'},
+  {id:'1O-x_se7_wwI1Fo2NFuZGl1xJg0k1M5x4',label:'LEGENDS',cat:'корпоративное мероприятие',award:'',meta:'2025, Россия',href:'#'},
+  {id:'1tazXGgpeRZTb92SO3SNX1CR6H2bqmiZE',label:'ЭДЕМ ДАЛЬШЕ',cat:'сценарное путешествие',award:'',meta:'2024, Россия',href:'#'},
+  {id:'1b2zYQh7Z6yO7tOlEKJBSzBEraV6yU7ha',label:'КУСКОВО',cat:'маркетинговое мероприятие',award:'',meta:'2024, Россия',href:'#'},
+  {id:'1-J503y8J_9qbJBNASfTaEbOm2vvU2ujM',label:'ДОМ МОЕЙ ДУШИ',cat:'личное событие',award:'',meta:'2024, Россия',href:'#'},
+  {id:'125rXyL2vXD0Rmi-25GqK3noCt-_ZrCTM',label:'FINSTAR',cat:'бизнес-событие',award:'',meta:'2024, Россия',href:'#'},
+  ...Array.from({length:14},(_,i)=>({id:'',label:'СОБЫТИЕ '+(i+13),cat:'скоро',award:'',meta:'2025',href:'#',stub:true}))
+];
+// CURSOR
+const $c=document.getElementById('cur'),$c2=document.getElementById('cur2');
+let mx=-200,my=-200,rx=-200,ry=-200;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY});
+(function lp(){requestAnimationFrame(lp);rx+=(mx-rx)*.18;ry+=(my-ry)*.18;
+$c.style.left=mx+'px';$c.style.top=my+'px';
+$c2.style.left=rx+'px';$c2.style.top=ry+'px'})();
+// REVEALS
+const ro=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in')}),{threshold:.1});
+document.querySelectorAll('.rv').forEach(el=>ro.observe(el));
+// SCROLL TOP
+const stBtn=document.getElementById('st');
+window.addEventListener('scroll',()=>stBtn.classList.toggle('show',scrollY>innerHeight),{passive:true});
+stBtn.onclick=()=>scrollTo({top:0,behavior:'smooth'});
+// FORM
+document.querySelector('.cf').onsubmit=e=>{e.preventDefault();const b=e.target.querySelector('.fsub');b.disabled=true;b.textContent='Отправка…';setTimeout(()=>{b.textContent='Отправлено ✓';b.disabled=false},900)};
+
+// ══ GLOBE ══
+(()=>{
+const stage=document.getElementById('globe-stage');
+const cv=document.getElementById('globe-canvas');
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setClearColor(0,0);
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(50,1,.01,100);
+// Start INSIDE globe, zoom out
+const Z_IN=1.2,Z_OUT=6.2;
+cam.position.z=Z_IN;
+const grp=new THREE.Group();
+scene.add(grp);
+const meshes=[],vels=[];
+const N=VIDS.length,PHI=Math.PI*(3-Math.sqrt(5)),R=3.05;
+VIDS.forEach((vd,i)=>{
+  let tex;
+  if(!vd.stub&&vd.id){
+    const v=document.createElement('video');
+    v.src=gd(vd.id)||'';v.muted=true;v.loop=true;v.playsInline=true;v.preload='none';
+    v.style.display='none';document.body.appendChild(v);
+    tex=new THREE.VideoTexture(v);
+    tex.minFilter=tex.magFilter=THREE.LinearFilter;
+    vels.push({v,i});
+  } else {
+    const c=document.createElement('canvas');c.width=256;c.height=384;
+    const ctx=c.getContext('2d');ctx.fillStyle='#0e1014';ctx.fillRect(0,0,256,384);
+    ctx.strokeStyle='rgba(152,119,48,.18)';ctx.lineWidth=1;ctx.strokeRect(12,12,232,360);
+    ctx.font='bold 14px sans-serif';ctx.fillStyle='rgba(240,238,233,.22)';ctx.textAlign='center';ctx.fillText(vd.label,128,196);
+    tex=new THREE.CanvasTexture(c);
+  }
+  const yn=1-(i/(N-1))*2,r2=Math.sqrt(Math.max(0,1-yn*yn)),th=PHI*i;
+  const x=Math.cos(th)*r2*R,y=yn*R,z=Math.sin(th)*r2*R;
+  const geo=new THREE.PlaneGeometry(1,1.5);
+  const mat=new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide});
+  const mesh=new THREE.Mesh(geo,mat);
+  mesh.position.set(x,y,z);mesh.lookAt(0,0,0);mesh.rotateY(Math.PI);
+  mesh.userData={...vd,idx:i};grp.add(mesh);meshes.push(mesh);
+});
+function setG(m,on){m.material.color.setHex(on?0x3a3a3a:0xffffff)}
+meshes.forEach(m=>setG(m,true));
+let alive=true,drag=false,px=0,py=0,vx=.0006,vy=0,fidx=-1,moved=false,zDone=false;
+const T0=performance.now(),ZD=2200;
+function zz(t){const p=Math.min(1,t/ZD),e=1-Math.pow(1-p,3);return Z_IN+(Z_OUT-Z_IN)*e}
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
+resize();window.addEventListener('resize',resize);
+// Wheel rotates globe (while on globe stage)
+window.addEventListener('wheel',e=>{if(!alive)return;e.preventDefault();vx+=e.deltaX*.0008;vy+=e.deltaY*.0008},{passive:false});
+cv.addEventListener('mousedown',e=>{if(!alive)return;drag=true;px=e.clientX;py=e.clientY;moved=false});
+cv.addEventListener('touchstart',e=>{if(!alive)return;drag=true;px=e.touches[0].clientX;py=e.touches[0].clientY;moved=false},{passive:true});
+window.addEventListener('mousemove',e=>{if(!drag||!alive)return;const dx=e.clientX-px,dy=e.clientY-py;if(Math.abs(dx)>2||Math.abs(dy)>2)moved=true;vx=dx*.003;vy=dy*.003;grp.rotation.y+=dx*.005;grp.rotation.x=Math.max(-1.2,Math.min(1.2,grp.rotation.x+dy*.004));px=e.clientX;py=e.clientY});
+window.addEventListener('touchmove',e=>{if(!drag||!alive)return;const dx=e.touches[0].clientX-px,dy=e.touches[0].clientY-py;moved=true;vx=dx*.003;vy=dy*.003;grp.rotation.y+=dx*.005;grp.rotation.x=Math.max(-1.2,Math.min(1.2,grp.rotation.x+dy*.004));px=e.touches[0].clientX;py=e.touches[0].clientY},{passive:true});
+window.addEventListener('mouseup',()=>drag=false);
+window.addEventListener('touchend',()=>drag=false);
+function getFront(){let b=null,bz=-Infinity;meshes.forEach(m=>{const p=new THREE.Vector3();m.getWorldPosition(p);if(p.z>bz){bz=p.z;b=m}});return b}
+let fr=0;
+function updFront(){const f=getFront();if(!f)return;const ni=f.userData.idx;if(ni===fidx)return;fidx=ni;vels.forEach(({v,i})=>{if(i===fidx)v.play().catch(()=>{});else v.pause()});meshes.forEach(m=>setG(m,m.userData.idx!==fidx))}
+// Click handler — use raycasting
+cv.addEventListener('click',e=>{
+  if(!alive||moved||!zDone)return;
+  const rect=cv.getBoundingClientRect();
+  const mouse=new THREE.Vector2(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
+  const ray=new THREE.Raycaster();ray.setFromCamera(mouse,cam);
+  const hits=ray.intersectObjects(meshes);
+  const si=hits.length>0?hits[0].object.userData.idx:fidx>=0?fidx:0;
+  explode(si);
+});
+(function anim(){
+  if(!alive)return;
+  requestAnimationFrame(anim);
+  if(!zDone){cam.position.z=zz(performance.now()-T0);if(performance.now()-T0>=ZD){zDone=true;cam.position.z=Z_OUT}}
+  if(!drag){grp.rotation.y+=vx;grp.rotation.x+=vy;vx+=(.0006-vx)*.012;vy*=.95}
+  fr++;if(fr%5===0)updFront();
+  renderer.render(scene,cam);
+})();
+
+// ── EXPLODE
+function explode(si){
+  alive=false;vels.forEach(({v})=>v.pause());
+  const ov=document.getElementById('tov');ov.style.opacity='1';ov.style.pointerEvents='all';
+  setTimeout(()=>{
+    stage.style.display='none';
+    document.getElementById('hdr').classList.add('show');
+    document.body.classList.add('unlocked');
+    const page=document.getElementById('page');
+    buildCaro(Math.min(si,VIDS.filter(v=>!v.stub).length-1));
+    page.querySelectorAll('.rv').forEach(el=>el.classList.add('in'));
+    ov.style.opacity='0';ov.style.pointerEvents='none';
+    setTimeout(()=>page.classList.add('show'),50);
+    window.scrollTo({top:0,behavior:'auto'});
+  },480);
+}
+
+// ── CAROUSEL
+const MAIN=VIDS.filter(v=>!v.stub);let cidx=0,overTrack=false;
+function buildCaro(start){
+  const track=document.getElementById('ct');track.innerHTML='';
+  MAIN.forEach((vd,i)=>{
+    const d=document.createElement('div');d.className='cc';
+    const vid=document.createElement('video');vid.muted=true;vid.loop=true;vid.playsInline=true;vid.preload='none';
+    if(vd.id){const src=gd(vd.id);if(src)vid.src=src;}
+    const ov2=document.createElement('div');ov2.className='cc-ov';
+    const body=document.createElement('div');body.className='cc-body';
+    const lk=document.createElement('button');lk.className='cc-like';
+    lk.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
+    lk.onclick=ev=>{ev.stopPropagation();lk.classList.toggle('on')};
+    const cat=document.createElement('p');cat.className='cc-cat';cat.textContent=vd.cat;
+    const ttl=document.createElement('h2');ttl.className='cc-title';ttl.textContent=vd.label;
+    const cta=document.createElement('a');cta.className='btn btn-ghost cc-cta';cta.href=vd.href;cta.textContent='Подробнее';
+    body.append(cat,ttl,cta);d.append(vid,ov2,lk,body);
+    d.addEventListener('click',()=>setIdx(i));
+    track.appendChild(d);
+  });
+  // Wheel over track = horizontal carousel nav
+  track.addEventListener('mouseenter',()=>{overTrack=true});
+  track.addEventListener('mouseleave',()=>{overTrack=false});
+  window.addEventListener('wheel',e=>{
+    if(!overTrack)return;
+    e.preventDefault();
+    const d2=e.deltaX||e.deltaY;
+    if(d2>30)setIdx(Math.min(MAIN.length-1,cidx+1));
+    else if(d2<-30)setIdx(Math.max(0,cidx-1));
+  },{passive:false});
+  setIdx(start);
+}
+function setIdx(idx){
+  cidx=idx;
+  const track=document.getElementById('ct');
+  const cards=[...track.children];
+  const vids=track.querySelectorAll('video');
+  cards.forEach((c,i)=>{
+    c.classList.remove('active','s1','s2','s3');
+    const d=Math.abs(i-idx);
+    if(d===0)c.classList.add('active');
+    else if(d===1)c.classList.add('s1');
+    else if(d===2)c.classList.add('s2');
+    else c.classList.add('s3');
+  });
+  vids.forEach((v,i)=>{if(i===idx)v.play().catch(()=>{});else{v.pause();v.currentTime=0}});
+  const vd=MAIN[idx];
+  document.getElementById('cy').textContent=vd.meta.split(',')[0].trim();
+  document.getElementById('cl').textContent=vd.meta.split(',').slice(1).join(',').trim()||'';
+  const aw=document.getElementById('ca');aw.textContent=vd.award||'';aw.style.display=vd.award?'':'none';
+  // Centre active card in track
+  const card=cards[idx];
+  if(card){
+    const trackRect=track.getBoundingClientRect();
+    const cardRect=card.getBoundingClientRect();
+    const offset=cardRect.left - trackRect.left - (trackRect.width/2 - cardRect.width/2);
+    track.scrollBy({left:offset,behavior:'smooth'});
+  }
+}
+document.getElementById('pb').onclick=()=>setIdx(Math.max(0,cidx-1));
+document.getElementById('nb').onclick=()=>setIdx(Math.min(MAIN.length-1,cidx+1));
+})();
+</script>
+</body>
+</html>
